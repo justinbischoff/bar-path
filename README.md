@@ -29,6 +29,15 @@ Bar Path tracks the end of the barbell through a snatch, clean or clean & jerk. 
 
 The fault thresholds are starting points, not a coaching standard. One camera and a general body model can be several degrees off.
 
+## Offline and install
+
+Bar Path is an installable web app. Use **Install app** in Chrome or Edge, or **Share → Add to Home Screen** in Safari. A service worker (`sw.js`) caches the app so it opens with no connection:
+- **App files:** fetched from the network first so updates arrive, falling back to the cache when offline.
+- **Pinned MediaPipe files and fonts:** served from the cache.
+- **Pose model and runtime (about 21 MB):** cached the first time body tracking runs, so a first visit never downloads them unasked.
+
+On iPhone, adding the app to the Home Screen also stops Safari from clearing saved lifts after a week without a visit.
+
 ## Run locally
 
 It uses ES modules, so serve the folder instead of opening the file directly:
@@ -54,6 +63,7 @@ There is no build step.
 | `js/draw.js` | Canvas overlay: path, body lines, measurement annotations, ghost path, comparison chart |
 | `js/storage.js` | IndexedDB storage for saved lifts, images and videos; backup export and import |
 | `js/library.js` | Save form, library list, opening saved lifts, ghost, compare |
+| `js/pwa.js`, `sw.js`, `manifest.webmanifest`, `icons/` | Offline cache, install button, app manifest and icons |
 | `vendor/mediapipe/` | Pinned copy of `@mediapipe/tasks-vision` 1.0.1 and the full pose model (Apache 2.0) |
 
 ## License

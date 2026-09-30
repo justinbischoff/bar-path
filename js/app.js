@@ -5,6 +5,7 @@ import { analyse, pathPoints } from './path.js';
 import { detectPose, finishPose, getPoser, useCpu } from './pose.js';
 import { GROUPS, evaluate } from './checks.js';
 import { drawOverlay } from './draw.js';
+import './pwa.js';
 import { drawCompareView, exitCompare, libUi, onSourceChange, refreshLibrary, renderLibrary } from './library.js';
 
 async function track() {

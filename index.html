@@ -6,6 +6,13 @@
 <title>Bar Path Tracer</title>
 <meta name="description" content="Track the barbell through a snatch or clean & jerk, see its path against vertical, and check the lift for common technique faults. Runs in your browser; videos never leave your device.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%231c1c1c'/%3E%3Ccircle cx='16' cy='16' r='13' fill='%23f2c230'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%231c1c1c'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%23c3c7ca'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#101214">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bar Path">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -18,6 +25,11 @@
   <header class="top">
     <h1 class="brand"><span class="plate" aria-hidden="true"></span>Bar Path</h1>
     <p>Tracks the end of the barbell through a snatch or clean &amp; jerk, draws its path against a vertical line, and checks the lift for common technique faults. The video never leaves your device.</p>
+    <div class="top-actions">
+      <span class="pill na" id="offline" hidden>Offline</span>
+      <button class="btn sm" id="btnInstall" hidden>Install app</button>
+    </div>
+    <p class="note install-help" id="installHelp" hidden>In Safari, tap the Share button, then <b>Add to Home Screen</b>. Installed, the app opens without an internet connection and Safari keeps your saved lifts.</p>
   </header>
 
   <main class="work">
@@ -132,7 +144,7 @@
       <div id="panelTech" role="tabpanel" aria-labelledby="tabTech" hidden>
         <section>
           <h2><span class="n">4</span>Check technique</h2>
-          <p class="note">Finds the lifter's joints on every tracked frame, then checks the pull, the catch and the jerk for common faults. The body-tracking model loads once (about 21 MB).</p>
+          <p class="note">Finds the lifter's joints on every tracked frame, then checks the pull, the catch and the jerk for common faults. The body-tracking model loads the first time (about 21 MB) and works offline after that.</p>
           <div class="btns">
             <button class="btn primary" id="btnPose" disabled>Analyse technique</button>
             <button class="btn" id="btnPoseStop" hidden>Stop</button>

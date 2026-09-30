@@ -166,3 +166,7 @@ textarea.input { resize: vertical; min-height: 56px; font: inherit; }
 .cmp th:first-child, .cmp td:first-child { text-align: left; }
 .cmp .sub { font-size: 11px; color: var(--muted); padding-left: 16px; }
 .sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+
+/* Install / offline */
+.top-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.install-help { flex-basis: 100%; margin: 0; }
