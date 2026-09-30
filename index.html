@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bar Path Tracer</title>
+<meta name="description" content="Track the barbell through a snatch or clean & jerk, see its path against vertical, and check the lift for common technique faults. Runs in your browser; videos never leave your device.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%231c1c1c'/%3E%3Ccircle cx='16' cy='16' r='13' fill='%23f2c230'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%231c1c1c'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%23c3c7ca'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/app.css">
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <h1 class="brand"><span class="plate" aria-hidden="true"></span>Bar Path</h1>
+    <p>Tracks the end of the barbell through a snatch or clean &amp; jerk, draws its path against a vertical line, and checks the lift for common technique faults. The video never leaves your device.</p>
+  </header>
+
+  <main class="work">
+    <section class="stage" aria-label="Video">
+      <div class="screen" id="screen">
+        <canvas id="view" width="720" height="960" aria-label="Video frame with bar path overlay"></canvas>
+        <div class="chip" id="chip">Loading sample</div>
+        <div class="drop" id="drop" hidden>Drop video to load</div>
+      </div>
+      <div class="transport">
+        <button class="btn" id="btnPlay" style="min-width:72px">Play</button>
+        <button class="btn icon" id="btnPrev" aria-label="Previous frame">&lsaquo;</button>
+        <button class="btn icon" id="btnNext" aria-label="Next frame">&rsaquo;</button>
+        <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Frame">
+        <span class="counter" id="counter">f 0/0</span>
+        <select class="btn" id="speed" aria-label="Playback speed">
+          <option value="1">1×</option>
+          <option value="0.5">½×</option>
+          <option value="0.25" selected>¼×</option>
+        </select>
+      </div>
+      <p class="hint" id="hint"></p>
+    </section>
+
+    <aside class="rail" aria-label="Controls">
+      <div class="tabs" role="tablist" aria-label="Analysis">
+        <button role="tab" id="tabPath" aria-selected="true" aria-controls="panelPath">Bar path</button>
+        <button role="tab" id="tabTech" aria-selected="false" aria-controls="panelTech">Technique<span class="count" id="techCount"></span></button>
+      </div>
+
+      <div id="panelPath" role="tabpanel" aria-labelledby="tabPath">
+        <section>
+          <h2><span class="n">1</span>Load a lift</h2>
+          <label class="btn primary file" for="file">Choose video<input type="file" id="file" accept="video/*"></label>
+          <div class="row">
+            <span class="lbl">Lift</span>
+            <div class="seg" role="group" aria-label="Lift" id="liftSeg">
+              <button data-lift="snatch" aria-pressed="true">Snatch</button>
+              <button data-lift="clean" aria-pressed="false">Clean</button>
+              <button data-lift="cj" aria-pressed="false">Clean &amp; jerk</button>
+            </div>
+          </div>
+          <div class="row">
+            <label for="fps">Frame rate</label>
+            <select class="btn" id="fps" style="flex:1">
+              <option value="24">24 fps</option><option value="25">25 fps</option>
+              <option value="30" selected>30 fps</option><option value="50">50 fps</option>
+              <option value="60">60 fps</option><option value="120">120 fps</option><option value="240">240 fps</option>
+            </select>
+          </div>
+          <p class="note" id="fpsNote">Film from the side with the camera still and level with the bar. You can also drop a file on the video.</p>
+        </section>
+
+        <section>
+          <h2><span class="n">2</span>Mark the bar end</h2>
+          <p class="note">On the frame where the lift starts, click the centre of the sleeve. Drag out to the plate rim to size the circle.</p>
+          <div class="row">
+            <label for="radius">Plate radius</label>
+            <input type="range" id="radius" min="8" max="300" value="40">
+            <output id="radiusOut" for="radius">40 px</output>
+          </div>
+          <label class="check"><input type="checkbox" id="scaleOn" checked><span>Plate is a 450 mm bumper (report distances in cm)</span></label>
+        </section>
+
+        <section>
+          <h2><span class="n">3</span>Track</h2>
+          <div class="btns">
+            <button class="btn primary" id="btnTrack" disabled>Track</button>
+            <button class="btn" id="btnStop" hidden>Stop</button>
+          </div>
+          <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+          <p class="note" id="trackMsg">Tracking runs frame by frame in your browser.</p>
+        </section>
+
+        <section>
+          <h2>Readout</h2>
+          <div class="row">
+            <span class="lbl">Lifter faces</span>
+            <div class="seg" role="group" aria-label="Lifter faces">
+              <button id="faceL" aria-pressed="false">← Left</button>
+              <button id="faceR" aria-pressed="true">Right →</button>
+            </div>
+          </div>
+          <dl class="stats" id="stats"></dl>
+          <p class="note" id="statsNote"></p>
+        </section>
+
+        <section>
+          <h2>Display</h2>
+          <div class="row">
+            <span class="lbl">Line colour</span>
+            <div class="swatches" id="swatches"></div>
+          </div>
+          <div class="row">
+            <label for="lw">Line width</label>
+            <input type="range" id="lw" min="2" max="20" value="7">
+            <output id="lwOut" for="lw">7 px</output>
+          </div>
+          <label class="check"><input type="checkbox" id="plumb" checked><span>Vertical line through the start position</span></label>
+          <label class="check"><input type="checkbox" id="descent" checked><span>Draw the drop into the catch in white</span></label>
+          <label class="check"><input type="checkbox" id="grow" checked><span>Path grows with playback</span></label>
+          <label class="check"><input type="checkbox" id="smooth" checked><span>Smooth the path</span></label>
+          <div class="btns">
+            <button class="btn" id="btnPng">Save frame (PNG)</button>
+            <button class="btn" id="btnRec">Save video</button>
+          </div>
+          <p class="note" id="exportNote"></p>
+        </section>
+      </div>
+
+      <div id="panelTech" role="tabpanel" aria-labelledby="tabTech" hidden>
+        <section>
+          <h2><span class="n">4</span>Check technique</h2>
+          <p class="note">Finds the lifter's joints on every tracked frame, then checks the pull, the catch and the jerk for common faults. The body-tracking model loads once (about 21 MB).</p>
+          <div class="btns">
+            <button class="btn primary" id="btnPose" disabled>Analyse technique</button>
+            <button class="btn" id="btnPoseStop" hidden>Stop</button>
+          </div>
+          <div class="progress" aria-hidden="true"><div id="poseBar"></div></div>
+          <p class="note" id="poseMsg">Track the bar on the Bar path tab first.</p>
+          <label class="check"><input type="checkbox" id="showBody" checked><span>Show body lines on the video</span></label>
+        </section>
+        <section>
+          <h2>Findings</h2>
+          <div id="findings"><p class="note">Nothing to check yet.</p></div>
+        </section>
+        <section>
+          <h2>How to read these</h2>
+          <p class="note">Click a finding to jump to its frame and see the measurement drawn on the lifter. The checks use one side-on camera and a general body model, so joint angles can be off by several degrees, more when a plate hides a joint. Treat a flag as a reason to look at that frame, not as a verdict.</p>
+        </section>
+      </div>
+    </aside>
+  </main>
+</div>
+
+</body>
+</html>
