@@ -39,6 +39,7 @@ export function drawOverlay() {
       } else stroke(f, end, S.color, S.lw * px);
     }
   }
+  if (S.ghost && S.src.kind !== 'still') drawGhost(ctx, k, px, pts);
   if (S.showBody) drawBody(ctx, k, px);
   if (a) {
     const cur = S.frame >= a.first && S.frame <= a.last ? pts[S.frame] : null;
@@ -134,4 +135,116 @@ export function drawAnnot(ctx, k, px, pts, line) {
     const d = (pts[i].x - pts[pts.findIndex(Boolean)].x) * F * c;
     tag(ctx, px, bar.x + (S.radius * k + 8 * px), bar.y - 11 * px, `bar ${fix(Math.abs(d))} cm ${d >= 0 ? 'forward' : 'back'}`);
   }
+}
+
+/* A saved path laid over the current video, scaled to this video's plate and anchored at its start position. */
+function drawGhost(ctx, k, px, pts) {
+  const f = pts.findIndex(Boolean);
+  const o = f >= 0 ? pts[f] : S.anchor;
+  if (!o) return;
+  const c = cmPerPx();
+  const P = g => ({ x: (o.x + g[1] * S.facing / c) * k, y: (o.y - g[2] / c) * k });
+  const path = () => {
+    ctx.beginPath(); let pen = false;
+    for (const g of S.ghost.pathCm) { if (!g) { pen = false; continue; } const p = P(g); if (pen) ctx.lineTo(p.x, p.y); else { ctx.moveTo(p.x, p.y); pen = true; } }
+    ctx.stroke();
+  };
+  ctx.save();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.setLineDash([10 * px, 7 * px]);
+  ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 6 * px; path();
+  ctx.strokeStyle = 'rgba(244,241,234,.8)'; ctx.lineWidth = 3 * px; path();
+  ctx.setLineDash([]);
+  const top = S.ghost.pathCm.filter(Boolean).reduce((a, g) => g[2] > a[2] ? g : a);
+  const t = P(top);
+  tag(ctx, px, t.x + 12 * px, t.y - 30 * px, `ghost · ${S.ghost.label}`);
+  ctx.restore();
+}
+
+const INK = '#ebe8e1', MUTED = '#8f969c', SURF = '#0a0b0c';
+const SANS = '"IBM Plex Sans", system-ui, sans-serif', MONO = '"IBM Plex Mono", ui-monospace, monospace';
+
+/* Saved bar paths on one grid: horizontal cm from the start line (away from the lifter to the right)
+   against height above the start. Returns the scales so the caller can hit-test hover. */
+export function drawCompare(ctx, W, H, series, hover) {
+  ctx.save();
+  ctx.fillStyle = SURF; ctx.fillRect(0, 0, W, H);
+  const pad = { l: 84, r: 40, t: 84, b: 100 };
+  let xm = 0, hmax = 0, hmin = 0;
+  for (const s of series) for (const p of s.pts) { xm = Math.max(xm, Math.abs(p[1])); hmax = Math.max(hmax, p[2]); hmin = Math.min(hmin, p[2]); }
+  const xStep = xm > 14 ? 10 : 5;
+  xm = Math.max(10, Math.ceil((xm + 1) / xStep) * xStep);
+  const yStep = hmax > 160 ? 40 : 20;
+  const yTop = Math.max(40, Math.ceil((hmax + 5) / yStep) * yStep), yBot = Math.min(0, Math.floor(hmin / yStep) * yStep);
+  const pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
+  const X = x => pad.l + (x + xm) / (2 * xm) * pw, Y = h => pad.t + (yTop - h) / (yTop - yBot) * ph;
+  const stretch = (pw / (2 * xm)) / (ph / (yTop - yBot));
+  const line = (x1, y1, x2, y2) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); };
+
+  ctx.font = `500 19px ${MONO}`; ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(235,232,225,.08)'; ctx.fillStyle = MUTED;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let x = -xm; x <= xm; x += xStep) { line(X(x), pad.t, X(x), pad.t + ph); ctx.fillText(String(Math.abs(x)), X(x), pad.t + ph + 10); }
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let h = yBot; h <= yTop; h += yStep) { line(pad.l, Y(h), pad.l + pw, Y(h)); ctx.fillText(String(h), pad.l - 12, Y(h)); }
+  ctx.strokeStyle = 'rgba(244,241,234,.5)'; ctx.lineWidth = 2; ctx.setLineDash([10, 8]);
+  line(X(0), pad.t, X(0), pad.t + ph); ctx.setLineDash([]);
+
+  ctx.fillStyle = MUTED; ctx.font = `500 19px ${SANS}`; ctx.textBaseline = 'top';
+  ctx.textAlign = 'left'; ctx.fillText('← toward lifter', pad.l, pad.t + ph + 44);
+  ctx.textAlign = 'right'; ctx.fillText('away from lifter →', pad.l + pw, pad.t + ph + 44);
+  ctx.textAlign = 'center'; ctx.fillText('cm from start', X(0), pad.t + ph + 44);
+  ctx.save(); ctx.translate(26, pad.t + ph / 2); ctx.rotate(-Math.PI / 2); ctx.textBaseline = 'middle';
+  ctx.fillText('height above start, cm', 0, 0); ctx.restore();
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = INK; ctx.font = `600 26px ${SANS}`; ctx.fillText('Bar path comparison', pad.l, 30);
+  if (stretch > 1.3) { ctx.fillStyle = MUTED; ctx.font = `400 18px ${SANS}`; ctx.fillText(`Horizontal distances stretched ${stretch.toFixed(1)}× so drift is visible`, pad.l, 60); }
+
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  const trace = pts => { ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(X(p[1]), Y(p[2])) : ctx.moveTo(X(p[1]), Y(p[2]))); };
+  for (const s of series) {
+    if (s.pts.length < 2) continue;
+    trace(s.pts);
+    ctx.strokeStyle = SURF; ctx.lineWidth = 8; ctx.stroke();
+    ctx.strokeStyle = s.color; ctx.lineWidth = 3.5; ctx.stroke();
+  }
+  for (const s of series) {
+    const p = s.catchPt; if (!p) continue;
+    ctx.beginPath(); ctx.arc(X(p[1]), Y(p[2]), 7, 0, Math.PI * 2);
+    ctx.fillStyle = s.color; ctx.fill(); ctx.strokeStyle = SURF; ctx.lineWidth = 3; ctx.stroke();
+  }
+
+  // Direct labels beside each path's highest point, nudged apart so they never overlap.
+  ctx.font = `500 19px ${SANS}`;
+  const labs = series.filter(s => s.pts.length).map(s => {
+    const top = s.pts.reduce((a, p) => p[2] > a[2] ? p : a, s.pts[0]);
+    return { s, x: X(top[1]) + 18, y: Y(top[2]) - 20 };
+  }).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labs.length; i++) if (labs[i].y - labs[i - 1].y < 30) labs[i].y = labs[i - 1].y + 30;
+  for (const l of labs) {
+    const w = ctx.measureText(l.s.label).width + 26;
+    const x = Math.min(l.x, W - pad.r - w), y = Math.max(pad.t - 10, l.y);
+    ctx.fillStyle = 'rgba(10,11,12,.8)'; ctx.fillRect(x - 4, y - 14, w + 8, 28);
+    ctx.fillStyle = l.s.color; ctx.beginPath(); ctx.arc(x + 7, y, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = INK; ctx.textAlign = 'left'; ctx.fillText(l.s.label, x + 20, y + 1);
+  }
+
+  if (hover) {
+    const s = series[hover.si], p = s && s.pts[hover.pi];
+    if (p) {
+      const hx = X(p[1]), hy = Y(p[2]);
+      ctx.beginPath(); ctx.arc(hx, hy, 9, 0, Math.PI * 2);
+      ctx.fillStyle = s.color; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+      const rows = [s.label, `${p[2].toFixed(1)} cm up · ${Math.abs(p[1]).toFixed(1)} cm ${p[1] >= 0 ? 'away' : 'toward'}`, `${p[0].toFixed(2)} s from lift-off`];
+      ctx.font = `500 19px ${SANS}`;
+      const w = Math.max(...rows.map(r => ctx.measureText(r).width)) + 28, h = rows.length * 26 + 16;
+      let bx = hx + 18, by = hy - h - 12;
+      if (bx + w > W - 8) bx = hx - w - 18;
+      if (by < 8) by = hy + 18;
+      ctx.fillStyle = 'rgba(23,26,29,.96)'; ctx.fillRect(bx, by, w, h);
+      ctx.strokeStyle = 'rgba(235,232,225,.2)'; ctx.lineWidth = 1; ctx.strokeRect(bx + .5, by + .5, w - 1, h - 1);
+      rows.forEach((r, i) => { ctx.fillStyle = i ? MUTED : INK; ctx.fillText(r, bx + 14, by + 22 + i * 26); });
+    }
+  }
+  ctx.restore();
+  return { X, Y };
 }

@@ -5,6 +5,7 @@ import { analyse, pathPoints } from './path.js';
 import { detectPose, finishPose, getPoser, useCpu } from './pose.js';
 import { GROUPS, evaluate } from './checks.js';
 import { drawOverlay } from './draw.js';
+import { drawCompareView, exitCompare, libUi, onSourceChange, refreshLibrary, renderLibrary } from './library.js';
 
 async function track() {
   const src = S.src, a = S.anchor;
@@ -156,7 +157,7 @@ async function runPose() {
   ui();
 }
 
-function refreshTech() {
+export function refreshTech() {
   S.tech = S.points.some(Boolean) ? evaluate() : null;
   if (S.tech && S.tech.checks && !S.tech.checks.some(c => c.id === S.focus)) S.focus = null;
   renderTech();
@@ -200,8 +201,9 @@ $('findings').addEventListener('click', async e => {
 
 /* ---------- Drawing ---------- */
 
-function render() {
+export function render() {
   const src = S.src; if (!src) return;
+  if (S.compare) { drawCompareView(); return; }
   src.draw(vctx, view.width, view.height);
   drawOverlay();
   updateTransport();
@@ -211,7 +213,7 @@ function render() {
 
 
 let wantFrame = null, seeking = false;
-async function goto(i) {
+export async function goto(i) {
   if (!S.src) return;
   wantFrame = clamp(Math.round(i), 0, S.src.N - 1);
   if (seeking) return;
@@ -258,7 +260,7 @@ async function play() {
   return done;
 }
 
-async function pause() {
+export async function pause() {
   if (!S.playing) return;
   S.playing = false;
   if (S.src.kind === 'video') S.src.el.pause();
@@ -271,19 +273,21 @@ function updateTransport() {
   const sc = $('scrub');
   sc.max = src.N - 1;
   if (!seeking || S.playing || S.tracking || S.analysing) sc.value = S.frame;
-  $('counter').textContent = `f ${S.frame}/${src.N - 1} · ${(S.frame / src.fps).toFixed(2)} s`;
+  $('counter').textContent = src.label ? `${src.label(S.frame)} · ${S.frame + 1}/${src.N}` : `f ${S.frame}/${src.N - 1} · ${(S.frame / src.fps).toFixed(2)} s`;
   if (S.tracking) $('chip').textContent = `Tracking the bar · frame ${S.frame} of ${src.N - 1}`;
   else if (S.analysing) $('chip').textContent = `Tracking the body · frame ${S.frame}`;
 }
 
 /* ---------- UI ---------- */
 
-function setMsg(text, warn) { const m = $('trackMsg'); m.textContent = text; m.classList.toggle('warn', !!warn); }
+export function setMsg(text, warn) { const m = $('trackMsg'); m.textContent = text; m.classList.toggle('warn', !!warn); }
 
-function ui() {
+export function ui() {
   const has = !!S.src, b = busy(), working = S.tracking || S.analysing;
   $('btnPlay').textContent = S.playing ? 'Pause' : 'Play';
-  for (const id of ['btnPlay', 'btnPrev', 'btnNext', 'scrub', 'speed']) $(id).disabled = !has || working;
+  const still = has && S.src.kind === 'still';
+  for (const id of ['btnPrev', 'btnNext', 'scrub']) $(id).disabled = !has || working || !!S.compare;
+  for (const id of ['btnPlay', 'speed']) $(id).disabled = !has || working || !!S.compare || still;
   $('file').disabled = b; $('fps').disabled = b || !has || S.src.kind !== 'video';
   $('btnTrack').disabled = !S.anchor || b;
   $('btnTrack').textContent = S.anchor ? `Track from frame ${S.anchor.frame}` : 'Track';
@@ -297,18 +301,27 @@ function ui() {
   $('btnRec').textContent = S.recording ? 'Recording…' : 'Save video';
   $('screen').classList.toggle('busy', working);
   const chip = $('chip');
-  if (has && !working) { chip.classList.remove('warn'); chip.textContent = `${S.src.name} · ${S.src.W}×${S.src.H} · ${S.src.fps} fps`; }
+  chip.hidden = !!S.compare;
+  if (has && !working) {
+    chip.classList.remove('warn');
+    chip.textContent = S.compare ? 'Comparing saved lifts' : still ? `Saved lift · ${S.src.name}` : `${S.src.name} · ${S.src.W}×${S.src.H} · ${S.src.fps} fps`;
+  }
   $('hint').innerHTML = !has ? '' :
+    S.compare ? 'Hover a path to read its height and drift. Pick lifts in the Library to add or remove them.' :
+    still ? 'Saved without its video. Step through the saved positions with ‹ and ›.' :
     S.tracking ? 'Following the bar end frame by frame.' :
     S.analysing ? 'Finding the lifter on each frame.' :
     !S.anchor && !tracked ? 'Scrub to the start of the lift, then click the centre of the bar end and drag to the plate rim.' :
     !tracked ? 'Press <b>Track</b> in step 3.' :
     'Play to watch the path draw in. If the circle drifts off the bar, click the bar end on that frame and track again from there. <kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play';
   if (!working) renderStats();
+  libUi();
 }
 
-function setSource(src) {
+export function setSource(src) {
+  exitCompare(true);
   S.src = src; S.frame = 0; S.points = []; S.anchor = null;
+  S.recordId = null; S.viewing = null;
   S.pose = []; S.poseS = []; S.tech = null; S.focus = null;
   S.vk = Math.min(1, 1280 / Math.max(src.W, src.H));
   view.width = Math.round(src.W * S.vk); view.height = Math.round(src.H * S.vk);
@@ -317,19 +330,28 @@ function setSource(src) {
   setRadius(src.R || clamp(Math.round(Math.min(src.W, src.H) * 0.08), 8, rmax));
   $('bar').style.width = '0'; $('poseBar').style.width = '0';
   renderTech();
+  onSourceChange(src);
+  renderLibrary();
 }
 
-function setRadius(r) { S.radius = r; $('radius').value = r; $('radiusOut').textContent = `${Math.round(r)} px`; }
+export function setRadius(r) { S.radius = r; $('radius').value = r; $('radiusOut').textContent = `${Math.round(r)} px`; }
 
-function setFacing(f, quiet) {
+export function setFacing(f, quiet) {
   S.facing = f;
   $('faceL').setAttribute('aria-pressed', f < 0); $('faceR').setAttribute('aria-pressed', f > 0);
   if (!quiet) { refreshTech(); render(); ui(); }
 }
 
-function setTab(t) {
-  $('tabPath').setAttribute('aria-selected', t === 'path'); $('tabTech').setAttribute('aria-selected', t === 'tech');
-  $('panelPath').hidden = t !== 'path'; $('panelTech').hidden = t !== 'tech';
+export function setTab(t) {
+  for (const [tab, panel, key] of [['tabPath', 'panelPath', 'path'], ['tabTech', 'panelTech', 'tech'], ['tabLib', 'panelLib', 'lib']]) {
+    $(tab).setAttribute('aria-selected', t === key); $(panel).hidden = t !== key;
+  }
+}
+
+export function setLift(l, quiet) {
+  S.lift = l;
+  $('liftSeg').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.lift === l));
+  if (!quiet) { refreshTech(); render(); ui(); }
 }
 
 async function loadFile(file) {
@@ -364,7 +386,7 @@ function toSrc(e) {
 
 let drag = false;
 view.addEventListener('pointerdown', async e => {
-  if (!S.src || busy()) return;
+  if (!S.src || busy() || S.compare || S.src.kind === 'still') return;
   if (S.playing) await pause();
   const p = toSrc(e);
   S.anchor = { x: p.x, y: p.y, frame: S.frame };
@@ -396,6 +418,7 @@ $('btnPose').onclick = runPose;
 $('btnPoseStop').onclick = () => { S.poseStop = true; };
 $('tabPath').onclick = () => setTab('path');
 $('tabTech').onclick = () => setTab('tech');
+$('tabLib').onclick = () => setTab('lib');
 $('fps').addEventListener('change', async e => {
   if (!S.src || S.src.kind !== 'video') return;
   S.src.fps = +e.target.value; S.points = []; S.anchor = null; S.pose = []; S.poseS = [];
@@ -404,10 +427,7 @@ $('fps').addEventListener('change', async e => {
   await goto(0); ui();
 });
 $('liftSeg').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  S.lift = b.dataset.lift;
-  $('liftSeg').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
-  refreshTech(); render(); ui();
+  const b = e.target.closest('button'); if (b) setLift(b.dataset.lift);
 });
 $('radius').addEventListener('input', e => { setRadius(+e.target.value); render(); });
 $('radius').addEventListener('change', () => { refreshTech(); ui(); });
@@ -429,7 +449,7 @@ PLATES.forEach((p, i) => {
 });
 
 document.addEventListener('keydown', e => {
-  if (!S.src || S.tracking || S.analysing || e.target.closest('input, select, textarea')) return;
+  if (!S.src || S.tracking || S.analysing || S.compare || e.target.closest('input, select, textarea')) return;
   if (e.key === 'ArrowLeft') { e.preventDefault(); $('btnPrev').click(); }
   else if (e.key === 'ArrowRight') { e.preventDefault(); $('btnNext').click(); }
   else if (e.key === ' ' && !e.target.closest('button')) { e.preventDefault(); $('btnPlay').click(); }
@@ -465,6 +485,8 @@ $('btnRec').onclick = async () => {
 $('exportNote').textContent = 'Save video replays the lift at the chosen speed and records it.';
 
 /* ---------- Start with the sample ---------- */
+
+refreshLibrary();
 
 (async () => {
   const demo = demoSource();

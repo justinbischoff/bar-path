@@ -19,10 +19,11 @@ export const S = {
   plumb: true, grow: true, smooth: true, descent: true, scaleOn: true,
   pose: [], poseS: [], poseSide: 0, analysing: false, poseStop: false,
   tech: null, focus: null, showBody: true,
+  recordId: null, viewing: null, compare: null, ghost: null, saving: false,
 };
 
 export const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 export const tick = () => new Promise(r => setTimeout(r, 0));
 export const fix = v => (Math.round(v * 10) / 10).toFixed(1);
 
-export const busy = () => S.tracking || S.analysing || S.recording;
+export const busy = () => S.tracking || S.analysing || S.recording || S.saving;

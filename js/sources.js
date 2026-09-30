@@ -32,7 +32,8 @@ export function detectFps(v) {
   });
 }
 
-export async function videoSource(file) {
+/* opts.name overrides the file name (a stored video is a Blob with none); opts.fps skips frame-rate detection. */
+export async function videoSource(file, opts = {}) {
   const v = document.createElement('video');
   v.muted = true; v.playsInline = true; v.preload = 'auto';
   v.src = URL.createObjectURL(file);
@@ -41,11 +42,11 @@ export async function videoSource(file) {
     v.onerror = () => rej(new Error("This browser can't decode that file. Try an MP4 (H.264) or WebM video."));
   });
   if (!isFinite(v.duration)) { await seekTo(v, 1e7); await seekTo(v, 0); }
-  const detected = await detectFps(v);
+  const detected = opts.fps ? null : await detectFps(v);
   await seekTo(v, 0);
   return {
-    kind: 'video', el: v, name: file.name, W: v.videoWidth, H: v.videoHeight,
-    fps: detected || 30, detected,
+    kind: 'video', el: v, file, name: opts.name || file.name, W: v.videoWidth, H: v.videoHeight,
+    fps: opts.fps || detected || 30, detected,
     get N() { return Math.max(1, Math.floor(v.duration * this.fps + 1e-6)); },
     frameTime(i) { return Math.min(v.duration - 0.001, (i + 0.5) / this.fps); },
     async seek(i) { await seekTo(v, this.frameTime(i)); },
@@ -112,5 +113,18 @@ export function demoSource() {
     start: { x: cx0, y: floorY - R },
     async seek(i) { cur = i; },
     draw(ctx, w, h) { ctx.save(); ctx.scale(w / W, h / H); paint(ctx, cur); ctx.restore(); },
+  };
+}
+
+/* A saved lift without its video: steps through the stills captured when it was saved. */
+export async function stillSource(name, stills) {
+  const imgs = [];
+  for (const s of stills) imgs.push({ label: s.label, bmp: await createImageBitmap(s.blob) });
+  let cur = 0;
+  return {
+    kind: 'still', name, W: imgs[0].bmp.width, H: imgs[0].bmp.height, fps: 30, N: imgs.length,
+    label: i => imgs[i].label,
+    async seek(i) { cur = i; },
+    draw(ctx, w, h) { ctx.drawImage(imgs[cur].bmp, 0, 0, w, h); },
   };
 }

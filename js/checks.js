@@ -165,5 +165,5 @@ export function evaluate() {
       }
     }
   }
-  return { checks: out, hasPose };
+  return { checks: out, hasPose, keys: { liftoff, knee: kneeIdx, ext: extIdx, peak, catch: catchIdx, jerk: jerk ? jerk.top : null } };
 }

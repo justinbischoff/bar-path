@@ -15,6 +15,18 @@ Bar Path tracks the end of the barbell through a snatch, clean or clean & jerk. 
    - **Catch:** jumping forward or back, the bar landing off mid-foot.
    - **Jerk:** a forward dip, a forward drive, press-outs.
 
+5. **Save and compare.** The Library tab saves each lift in this browser's IndexedDB. A save keeps:
+   - the path, the readout and the findings
+   - stills of the key positions (lift-off, bar at knee, extension, catch, jerk lockout)
+   - the video too, if you choose to keep it.
+
+   From the Library you can:
+   - **Compare:** overlay up to five saved paths on one chart.
+   - **Ghost:** lay a saved path over the current video.
+   - **Back up:** export everything to a JSON file and import it on another device. Backups leave videos out.
+
+   Nothing is uploaded.
+
 The fault thresholds are starting points, not a coaching standard. One camera and a general body model can be several degrees off.
 
 ## Run locally
@@ -39,7 +51,9 @@ There is no build step.
 | `js/path.js` | Path smoothing, lift phases (lift-off, peak, catch, jerk), readout figures |
 | `js/pose.js` | MediaPipe loading, joint lookup and angles |
 | `js/checks.js` | Technique fault checks |
-| `js/draw.js` | Canvas overlay: path, body lines, measurement annotations |
+| `js/draw.js` | Canvas overlay: path, body lines, measurement annotations, ghost path, comparison chart |
+| `js/storage.js` | IndexedDB storage for saved lifts, images and videos; backup export and import |
+| `js/library.js` | Save form, library list, opening saved lifts, ghost, compare |
 | `vendor/mediapipe/` | Pinned copy of `@mediapipe/tasks-vision` 1.0.1 and the full pose model (Apache 2.0) |
 
 ## License

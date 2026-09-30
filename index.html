@@ -46,6 +46,7 @@
       <div class="tabs" role="tablist" aria-label="Analysis">
         <button role="tab" id="tabPath" aria-selected="true" aria-controls="panelPath">Bar path</button>
         <button role="tab" id="tabTech" aria-selected="false" aria-controls="panelTech">Technique<span class="count" id="techCount"></span></button>
+        <button role="tab" id="tabLib" aria-selected="false" aria-controls="panelLib">Library<span class="count muted" id="libCount"></span></button>
       </div>
 
       <div id="panelPath" role="tabpanel" aria-labelledby="tabPath">
@@ -147,6 +148,74 @@
         <section>
           <h2>How to read these</h2>
           <p class="note">Click a finding to jump to its frame and see the measurement drawn on the lifter. The checks use one side-on camera and a general body model, so joint angles can be off by several degrees, more when a plate hides a joint. Treat a flag as a reason to look at that frame, not as a verdict.</p>
+        </section>
+      </div>
+
+      <div id="panelLib" role="tabpanel" aria-labelledby="tabLib" hidden>
+        <section id="saveSec" hidden>
+          <h2><span class="n">5</span>Save this lift</h2>
+          <div class="row">
+            <label for="saveDate">Date</label>
+            <input type="date" id="saveDate" class="input" style="flex:1">
+          </div>
+          <div class="row">
+            <label for="saveKg">Weight</label>
+            <input type="number" id="saveKg" class="input" min="0" step="0.5" inputmode="decimal" placeholder="kg" style="flex:1">
+          </div>
+          <textarea id="saveNotes" class="input" rows="2" placeholder="Notes: cues, how it felt, what you were working on" aria-label="Notes"></textarea>
+          <label class="check"><input type="checkbox" id="keepVideo"><span id="keepVideoLbl">Keep the video on this device</span></label>
+          <div class="btns">
+            <button class="btn primary" id="btnSave">Save to library</button>
+            <button class="btn" id="btnSaveNew" hidden>Save as new</button>
+          </div>
+          <p class="note" id="saveHint"></p>
+          <p class="note" id="saveMsg" role="status"></p>
+        </section>
+
+        <section id="detailSec" hidden>
+          <h2 id="detTitle"></h2>
+          <p class="note" id="detSub"></p>
+          <div class="stills" id="detStills"></div>
+          <dl class="stats" id="detStats"></dl>
+          <div id="detFindings"></div>
+          <div class="btns">
+            <button class="btn sm" id="btnDetVideo" hidden>Remove saved video</button>
+            <button class="btn sm" id="btnDetClose">Close</button>
+          </div>
+        </section>
+
+        <section id="compareSec" hidden>
+          <h2>Compare</h2>
+          <div id="cmpTable" class="scroll-x"></div>
+          <label class="check"><input type="checkbox" id="pullOnly"><span>Pull only (floor to the catch)</span></label>
+          <button class="btn" id="btnCompareExit">Back to the video</button>
+        </section>
+
+        <section>
+          <h2>Library</h2>
+          <div class="meter" aria-hidden="true"><div id="meter"></div></div>
+          <p class="note" id="libUsage">Saved lifts stay in this browser on this device. Nothing is uploaded.</p>
+          <p class="note ghost-note" id="ghostNote" hidden>Ghost on the video: <b id="ghostName"></b> <button class="btn sm" id="btnGhostOff">Remove</button></p>
+          <div class="seg" role="group" aria-label="Show lifts" id="libFilter">
+            <button data-lift="all" aria-pressed="true">All</button>
+            <button data-lift="snatch" aria-pressed="false">Snatch</button>
+            <button data-lift="clean" aria-pressed="false">Clean</button>
+            <button data-lift="cj" aria-pressed="false">C&amp;J</button>
+          </div>
+          <div id="libList"></div>
+          <div class="btns">
+            <button class="btn primary" id="btnCompare" disabled>Compare</button>
+          </div>
+          <p class="note" id="libMsg" role="status"></p>
+        </section>
+
+        <section>
+          <h2>Backup</h2>
+          <p class="note">Saved lifts live only in this browser. Export a backup file to keep them safe or move them to another device. Backups include stills but not videos.</p>
+          <div class="btns">
+            <button class="btn" id="btnExport">Export backup</button>
+            <label class="btn file" for="importFile">Import backup<input type="file" id="importFile" accept="application/json,.json"></label>
+          </div>
         </section>
       </div>
     </aside>
