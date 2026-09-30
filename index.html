@@ -86,7 +86,7 @@
 
         <section>
           <h2><span class="n">2</span>Mark the bar end</h2>
-          <p class="note">On the frame where the lift starts, click the centre of the sleeve. Drag out to the plate rim to size the circle.</p>
+          <p class="note">Play or step to the frame where the lift starts and pause. Then click the centre of the sleeve on that frame and drag out to the plate rim to size the circle.</p>
           <div class="row">
             <label for="radius">Plate radius</label>
             <input type="range" id="radius" min="8" max="300" value="40">
@@ -100,7 +100,9 @@
           <div class="btns">
             <button class="btn primary" id="btnTrack" disabled>Track</button>
             <button class="btn" id="btnStop" hidden>Stop</button>
+            <button class="btn" id="btnClear" disabled>Clear path</button>
           </div>
+          <p class="note" id="trackHint"></p>
           <div class="progress" aria-hidden="true"><div id="bar"></div></div>
           <p class="note" id="trackMsg">Tracking runs frame by frame in your browser.</p>
         </section>

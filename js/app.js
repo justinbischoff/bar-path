@@ -9,7 +9,7 @@ import './pwa.js';
 import { drawCompareView, exitCompare, libUi, onSourceChange, refreshLibrary, renderLibrary } from './library.js';
 
 async function track() {
-  const src = S.src, a = S.anchor;
+  const src = S.src, a = startPoint();
   if (!src || !a || busy()) return;
   if (S.playing) await pause();
   S.tracking = true; S.stop = false; setMsg(''); ui();
@@ -281,6 +281,14 @@ function updateTransport() {
 
 /* ---------- UI ---------- */
 
+/* Tracking starts from the bar end clicked on this frame, or else from this frame's already-tracked position. */
+function startPoint() {
+  if (!S.src || S.src.kind === 'still') return null;
+  if (S.anchor && S.anchor.frame === S.frame) return S.anchor;
+  const p = S.points[S.frame];
+  return p ? { x: p.x, y: p.y, frame: S.frame } : null;
+}
+
 export function setMsg(text, warn) { const m = $('trackMsg'); m.textContent = text; m.classList.toggle('warn', !!warn); }
 
 export function ui() {
@@ -290,8 +298,15 @@ export function ui() {
   for (const id of ['btnPrev', 'btnNext', 'scrub']) $(id).disabled = !has || working || !!S.compare;
   for (const id of ['btnPlay', 'speed']) $(id).disabled = !has || working || !!S.compare || still;
   $('file').disabled = b; $('fps').disabled = b || !has || S.src.kind !== 'video';
-  $('btnTrack').disabled = !S.anchor || b;
-  $('btnTrack').textContent = S.anchor ? `Track from frame ${S.anchor.frame}` : 'Track';
+  const start = startPoint();
+  $('btnTrack').disabled = !start || b;
+  $('btnTrack').textContent = has && S.src.kind !== 'still' ? `${start && !(S.anchor && S.anchor.frame === S.frame) ? 'Re-track' : 'Track'} from frame ${S.frame}` : 'Track';
+  $('btnClear').disabled = !S.points.some(Boolean) || b;
+  const earlier = start && S.points.slice(0, start.frame).some(Boolean);
+  $('trackHint').textContent = !has || S.src.kind === 'still' ? '' :
+    !start ? `Click the centre of the bar end on this frame (${S.frame}) to start tracking here.` :
+    earlier ? `Frames before ${start.frame} keep their tracked path. Use Clear path to start the path here instead.` :
+    `Tracking starts at frame ${start.frame} and runs to the end of the video. Press Stop to end early.`;
   $('btnStop').hidden = !S.tracking;
   const tracked = S.points.some(Boolean);
   $('btnPose').disabled = !tracked || b;
@@ -414,6 +429,14 @@ $('btnPrev').onclick = async () => { if (S.playing) await pause(); goto(S.frame 
 $('btnNext').onclick = async () => { if (S.playing) await pause(); goto(S.frame + 1); };
 $('scrub').addEventListener('input', async e => { if (S.playing) await pause(); goto(+e.target.value); });
 $('btnTrack').onclick = track;
+$('btnClear').onclick = async () => {
+  if (busy()) return;
+  if (S.playing) await pause();
+  S.points = []; S.pose = []; S.poseS = [];
+  $('bar').style.width = '0'; $('poseBar').style.width = '0';
+  setMsg('Path cleared. Go to the frame where the lift starts and click the bar end.');
+  refreshTech(); render(); ui();
+};
 $('btnStop').onclick = () => { S.stop = true; };
 $('btnPose').onclick = runPose;
 $('btnPoseStop').onclick = () => { S.poseStop = true; };
