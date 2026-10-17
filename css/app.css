@@ -42,7 +42,14 @@ button, input, select { font: inherit; color: inherit; }
 .top p { margin: 0; color: var(--muted); max-width: 62ch; }
 
 .work { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
-@media (max-width: 900px) { .work { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) {
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .app { padding-inline: 16px; gap: 12px; }
+  /* Leave room below the video so the transport and the next step stay in view. */
+  #view { max-height: 60vh; max-height: 60svh; }
+  .stage-acts .btn { padding: 11px 16px; font-size: 15px; }
+  #stageTrack:not([hidden]) { display: inline-flex; }
+}
 
 /* Stage */
 .stage { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -52,6 +59,12 @@ button, input, select { font: inherit; color: inherit; }
 .chip { position: absolute; top: 10px; left: 10px; background: rgba(10,11,12,.78); color: #ebe8e1; font: 500 12px/1 var(--mono); padding: 7px 9px; border-radius: 4px; pointer-events: none; max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chip.warn { color: #ffb3a8; }
 .drop { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10,11,12,.82); color: #f2c230; font: 700 26px var(--display); letter-spacing: .05em; text-transform: uppercase; border: 2px dashed #f2c230; border-radius: 6px; pointer-events: none; }
+
+/* Load / Track / Stop on the video itself, so phones don't have to scroll to the rail mid-task. */
+.stage-acts { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 8px; }
+.stage-acts .btn { box-shadow: 0 2px 10px rgba(0,0,0,.45); }
+.stage-acts .btn.stop { background: #ff7a6b; border-color: #ff7a6b; color: #1a0603; font-weight: 600; min-width: 96px; padding: 12px 18px; font-size: 16px; }
+#stageTrack { display: none; }
 
 .transport { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .transport input[type=range] { flex: 1 1 200px; min-width: 0; accent-color: var(--accent); }
@@ -166,6 +179,9 @@ textarea.input { resize: vertical; min-height: 56px; font: inherit; }
 .cmp th:first-child, .cmp td:first-child { text-align: left; }
 .cmp .sub { font-size: 11px; color: var(--muted); padding-left: 16px; }
 .sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+
+/* Video element kept in the document for iOS, but out of sight. */
+.offstage { position: fixed; left: 0; top: 0; width: 2px; height: 2px; opacity: 0; pointer-events: none; z-index: -1; }
 
 /* Install / offline */
 .top-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }

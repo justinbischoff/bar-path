@@ -308,6 +308,10 @@ export function ui() {
     earlier ? `Frames before ${start.frame} keep their tracked path. Use Clear path to start the path here instead.` :
     `Tracking starts at frame ${start.frame} and runs to the end of the video. Press Stop to end early.`;
   $('btnStop').hidden = !S.tracking;
+  $('stageStop').hidden = !working;
+  $('stageLoad').hidden = b || !has || S.src.kind !== 'demo';
+  $('stageTrack').hidden = !start || b || !!S.compare;
+  $('stageTrack').textContent = $('btnTrack').textContent;
   const tracked = S.points.some(Boolean);
   $('btnPose').disabled = !tracked || b;
   $('btnPoseStop').hidden = !S.analysing;
@@ -336,6 +340,7 @@ export function ui() {
 
 export function setSource(src) {
   exitCompare(true);
+  if (S.src && S.src !== src && S.src.dispose) S.src.dispose();
   S.src = src; S.frame = 0; S.points = []; S.anchor = null;
   S.recordId = null; S.viewing = null;
   S.pose = []; S.poseS = []; S.tech = null; S.focus = null;
@@ -418,7 +423,7 @@ const endDrag = () => { if (drag) { drag = false; refreshTech(); ui(); } };
 view.addEventListener('pointerup', endDrag);
 view.addEventListener('pointercancel', endDrag);
 
-$('file').addEventListener('change', e => loadFile(e.target.files[0]));
+$('file').addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value = ''; });
 const screen = $('screen');
 screen.addEventListener('dragover', e => { e.preventDefault(); $('drop').hidden = false; });
 screen.addEventListener('dragleave', e => { if (!screen.contains(e.relatedTarget)) $('drop').hidden = true; });
@@ -438,6 +443,8 @@ $('btnClear').onclick = async () => {
   refreshTech(); render(); ui();
 };
 $('btnStop').onclick = () => { S.stop = true; };
+$('stageStop').onclick = () => { S.stop = true; S.poseStop = true; };
+$('stageTrack').onclick = track;
 $('btnPose').onclick = runPose;
 $('btnPoseStop').onclick = () => { S.poseStop = true; };
 $('tabPath').onclick = () => setTab('path');

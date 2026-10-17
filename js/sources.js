@@ -36,11 +36,30 @@ export function detectFps(v) {
 export async function videoSource(file, opts = {}) {
   const v = document.createElement('video');
   v.muted = true; v.playsInline = true; v.preload = 'auto';
+  v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+  // iOS Safari won't load or paint frames for a video that isn't in the document, so park it off-screen.
+  v.className = 'offstage';
+  document.body.appendChild(v);
   v.src = URL.createObjectURL(file);
-  await new Promise((res, rej) => {
-    v.onloadeddata = res;
-    v.onerror = () => rej(new Error("This browser can't decode that file. Try an MP4 (H.264) or WebM video."));
-  });
+  v.load();
+  try {
+    await new Promise((res, rej) => {
+      const to = setTimeout(() => rej(new Error('The video took too long to open. Try again, or try a shorter clip.')), 20000);
+      v.onloadedmetadata = () => { clearTimeout(to); res(); };
+      v.onerror = () => { clearTimeout(to); rej(new Error("This browser can't decode that file. Try an MP4 (H.264) or WebM video.")); };
+    });
+    // iOS ignores preload, so nothing is decoded until playback starts. A muted play/pause forces the first frame.
+    if (v.readyState < 2) {
+      await Promise.race([
+        v.play().then(() => v.pause(), () => {}),
+        new Promise(r => setTimeout(r, 3000)),
+      ]);
+      v.pause();
+    }
+  } catch (e) {
+    URL.revokeObjectURL(v.src); v.remove();
+    throw e;
+  }
   if (!isFinite(v.duration)) { await seekTo(v, 1e7); await seekTo(v, 0); }
   const detected = opts.fps ? null : await detectFps(v);
   await seekTo(v, 0);
@@ -51,6 +70,7 @@ export async function videoSource(file, opts = {}) {
     frameTime(i) { return Math.min(v.duration - 0.001, (i + 0.5) / this.fps); },
     async seek(i) { await seekTo(v, this.frameTime(i)); },
     draw(ctx, w, h) { ctx.drawImage(v, 0, 0, w, h); },
+    dispose() { v.pause(); URL.revokeObjectURL(v.src); v.remove(); },
   };
 }
 

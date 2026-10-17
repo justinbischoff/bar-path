@@ -38,6 +38,11 @@
         <canvas id="view" width="720" height="960" aria-label="Video frame with bar path overlay"></canvas>
         <div class="chip" id="chip">Loading sample</div>
         <div class="drop" id="drop" hidden>Drop video to load</div>
+        <div class="stage-acts">
+          <label class="btn primary file" for="file" id="stageLoad">Choose video</label>
+          <button class="btn primary" id="stageTrack" hidden>Track</button>
+          <button class="btn stop" id="stageStop" hidden>Stop</button>
+        </div>
       </div>
       <div class="transport">
         <button class="btn" id="btnPlay" style="min-width:72px">Play</button>
